@@ -1,0 +1,208 @@
+<!<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <title></title>
+    <meta charset="utf-8">
+    <link rel="stylesheet" href="//maxcdn.bootstrapcdn.com/bootstrap/3.2.0/css/bootstrap.min.css">
+  </head>
+  <body>
+<div class="container">
+
+    <h1>User manager</h1>
+    <hr>
+    <div class="page"></div>
+</div>
+
+  <script src="//cdnjs.cloudflare.com/ajax/libs/jquery/2.1.1/jquery.js"></script>
+  <script src="//cdnjs.cloudflare.com/ajax/libs/underscore.js/1.6.0/underscore-min.js"></script>
+
+
+  <script src="//cdnjs.cloudflare.com/ajax/libs/backbone.js/1.1.2/backbone-min.js"></script>
+
+<script type="text/template" id="edit-user-template">
+
+<form class="edit-user-form">
+ <legend><%= user ? 'Edit' : 'New' %> User</legend>
+<div class="form-group">
+  <label for="firstName">First name</label>
+  <input type="text" class="form-control" name="firstname" placeholder="Enter firstname" value="<%= user ? user.get('firstname') : '' %>">
+</div>
+<div class="form-group">
+  <label for="lastName">Last name</label>
+  <input type="text" class="form-control" name="lastname" placeholder="Enter lastname" value="<%= user ? user.get('lastname') : '' %>">
+</div>
+<div class="form-group">
+  <label for="age">Age</label>
+  <input type="text" class="form-control" name="age" placeholder="Enter age" value="<%= user ? user.get('age') : '' %>">
+</div>
+
+  <button type="submit" class="btn btn-default"><%= user ? 'Update' : 'Create' %></button>
+  <% if(user) { %>
+        <input type="hidden" name="id" value="<%= user.id %>" />
+       <button data-user-id="<%= user.id %>" class="btn btn-danger delete">Delete</button>
+       <% }; %>
+</form>
+</script>
+
+<script type="script/template" id="user-list-template" charset="utf-8">
+<a href="#/new" class="btn btn-primary">Add new</a>
+<hr>
+<table class="table table-striped">
+<thead>
+  <tr>
+    <th>
+      first name
+    </th>
+    <th>
+      last name
+    </th>
+    <th>
+      age
+    </th>
+    <th>
+
+    </th>
+  </tr>
+</thead>
+<tbody>
+  <% _.each(users, function(user){ %>
+
+    <tr>
+      <td><%= user.get('firstname') %></td>
+      <td><%= user.get('lastname') %></td>
+      <td><%= user.get('age') %></td>
+      <td><a href="#/edit/<%= user.get('id') %>"><span class="glyphicon glyphicon-edit"></span></a></td>
+    </tr>
+
+  <% }); %>
+
+</tbody>
+
+</table>
+</script>
+
+  <script charset="utf-8">
+
+    $.ajaxPrefilter( function( options, originalOptions, jqXHR ) {
+  options.url = 'http://backbonejs-beginner.herokuapp.com' + options.url;
+});
+
+    $.fn.serializeObject = function() {
+      var o = {};
+      var a = this.serializeArray();
+      $.each(a, function() {
+          if (o[this.name] !== undefined) {
+              if (!o[this.name].push) {
+                  o[this.name] = [o[this.name]];
+              }
+              o[this.name].push(this.value || '');
+          } else {
+              o[this.name] = this.value || '';
+          }
+      });
+      return o;
+    };
+
+    var Users = Backbone.Collection.extend({
+      url: '/users'
+    });
+
+    var User = Backbone.Model.extend({
+      urlRoot: '/users'
+    });
+
+    var UserList = Backbone.View.extend({
+      el: '.page',
+      render: function(){
+        var that = this;
+        var users = new Users();
+        users.fetch({
+            success: function(){
+              var template = _.template($('#user-list-template').html(), {users:users.models});
+              that.$el.html(template);
+            }
+        });
+
+      }
+    });
+
+
+    var EditUser = Backbone.View.extend({
+
+      el: '.page',
+      events: {
+        'submit .edit-user-form': 'saveUser',
+        'click .delete': 'deleteUser'
+      },
+
+      saveUser: function (ev) {
+        var userDetails = $(ev.currentTarget).serializeObject();
+        var user = new User();
+        user.save(userDetails, {
+          success: function (user) {
+            router.navigate('', {trigger:true});
+            //console.log(user);
+          }
+        });
+        return false;
+      },
+    deleteUser: function (ev) {
+        this.user.destroy({
+          success: function () {
+            console.log('destroyed');
+            router.navigate('', {trigger:true});
+          }
+        });
+        return false;
+      },
+
+      render: function(options){
+        var that = this;
+        if(options.id) {
+          that.user = new User({id: options.id});
+          that.user.fetch({
+            success: function (user) {
+              var template = _.template($('#edit-user-template').html(), {user: user});
+              that.$el.html(template);
+            }
+          })
+        } else {
+          var template = _.template($('#edit-user-template').html(), {user: null});
+          that.$el.html(template);
+        }
+
+      }
+
+
+    });
+  // Backbone router
+    var Router = Backbone.Router.extend({
+      routes: {
+        '':'home',
+        'new':'editUser',
+        'edit/:id': 'editUser'
+      }
+    });
+
+    // create instance of the router
+    var router = new Router();
+    // create instance of UserList view
+    var userList = new UserList();
+    var editUser = new EditUser();
+
+    // listen route with callback
+    router.on('route:home', function(){
+      userList.render();
+    })
+    router.on('route:editUser', function(id){
+      editUser.render({id: id});
+    })
+
+
+    // Start listening URL
+    Backbone.history.start();
+
+  </script>
+  </body>
+</html>
+<!-- Why html5 is not utf-8 by default? -->
